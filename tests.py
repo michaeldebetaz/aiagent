@@ -1,5 +1,10 @@
 import unittest
-from functions.get_files_info import get_files_info, get_file_content, write_file
+
+# from functions.get_files_info import get_files_info
+# from functions.get_file_content import get_file_content
+# from functions.write_file import write_file
+from functions.run_python import run_python_file
+
 
 WORKING_DIRECTORY = "calculator"
 
@@ -37,26 +42,47 @@ class TestGetFilesInfo(unittest.TestCase):
     #     # Test with invalid files
     #     has_error, result = check("/bin/cat")
     #     self.assertTrue(has_error, "Expected an error for '/bin/cat', got:\n" + result)
+    #
+    # def test_write_file(self):
+    #     def check(file_path: str, content: str) -> tuple[bool, str]:
+    #         result = write_file(WORKING_DIRECTORY, file_path, content)
+    #         print(result)
+    #         has_error = result.startswith("Error")
+    #
+    #         expected = "an error" if has_error else "no error"
+    #         message = f"Expected {expected} for writing to {file_path} {result=}"
+    #
+    #         return has_error, message
+    #
+    #     # Test writing to a valid file
+    #     has_error, msg = check("lorem.txt", "wait, this isn't lorem ipsum")
+    #     self.assertFalse(has_error, msg)
+    #     has_error, msg = check("pkg/morelorem.txt", "lorem ipsum dolor sit amet")
+    #     self.assertFalse(has_error, msg)
+    #
+    #     # Test writing to an invalid file
+    #     has_error, msg = check("/tmp/temp.txt", "this should not be allowed")
+    #     self.assertTrue(has_error, msg)
 
-    def test_write_file(self):
-        def check(file_path: str, content: str) -> tuple[bool, str]:
-            result = write_file(WORKING_DIRECTORY, file_path, content)
+    def test_run_python_file(self):
+        def check(file_path: str) -> tuple[bool, str]:
+            result = run_python_file(WORKING_DIRECTORY, file_path)
             print(result)
             has_error = result.startswith("Error")
-
             expected = "an error" if has_error else "no error"
-            message = f"Expected {expected} for writing to {file_path} {result=}"
-
+            message = f"Expected {expected} for writing to {file_path}, got: {result}"
             return has_error, message
 
-        # Test writing to a valid file
-        has_error, msg = check("lorem.txt", "wait, this isn't lorem ipsum")
+        # Test running a valid Python file
+        has_error, msg = check("main.py")
         self.assertFalse(has_error, msg)
-        has_error, msg = check("pkg/morelorem.txt", "lorem ipsum dolor sit amet")
+        has_error, msg = check("tests.py")
         self.assertFalse(has_error, msg)
 
-        # Test writing to an invalid file
-        has_error, msg = check("/tmp/temp.txt", "this should not be allowed")
+        # Test running an invalid Python file
+        has_error, msg = check("../main.py")
+        self.assertTrue(has_error, msg)
+        has_error, msg = check("nonexistent.py")
         self.assertTrue(has_error, msg)
 
 
