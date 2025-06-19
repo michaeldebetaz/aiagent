@@ -3,7 +3,7 @@ import dotenv
 from google import genai
 from google.genai import types
 import argparse
-from functions import utils
+from functions.generate_content import generate_content
 from functions.call_function import call_function
 
 
@@ -23,56 +23,56 @@ def main():
     assert isinstance(args.verbose, bool), "verbose must be a boolean"
 
     client = genai.Client(api_key=api_key)
-    model = "gemini-2.0-flash-001"
-    contents = types.Content(role="user", parts=[types.Part(text=args.user_prompt)])
 
-    system_prompt = """
-    You are a helpful AI coding agent.
+    contents = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
 
-    When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+    response = generate_content(client, contents)
 
-    - List files and directories
-    - Read file contents
-    - Execute Python files with optional arguments
-    - Write or overwrite files
+    MAX_ITERATIONS = 20
+    n_iterations = 0
+    while n_iterations < MAX_ITERATIONS and response.function_calls is not None:
+        n_iterations += 1
 
-    All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
-    """
+        assert isinstance(
+            response.candidates, list
+        ), "Response candidates must be a list"
 
-    config = types.GenerateContentConfig(
-        tools=utils.get_tools(), system_instruction=system_prompt
-    )
-    response = client.models.generate_content(
-        model=model, contents=contents, config=config
-    )
+        for candidate in response.candidates:
+            if candidate.content is not None:
+                contents.append(candidate.content)
 
-    if response.function_calls:
-        for function_call_part in response.function_calls:
-            content = call_function(
-                function_call_part=function_call_part, verbose=args.verbose
-            )
+        response = generate_content(client, contents)
 
-            assert isinstance(content.parts, list), "Content parts must be a list"
+        if response.function_calls:
+            for function_call_part in response.function_calls:
+                content = call_function(
+                    function_call_part=function_call_part, verbose=args.verbose
+                )
 
-            assert isinstance(
-                content.parts[0], types.Part
-            ), "Content part must be a Part instance"
-            part = content.parts[0]
+                assert isinstance(content.parts, list), "Content parts must be a list"
 
-            assert isinstance(
-                part.function_response, types.FunctionResponse
-            ), "Content part must have a function response"
-            function_response = part.function_response.response
+                assert isinstance(
+                    content.parts[0], types.Part
+                ), "Content part must be a Part instance"
 
-            assert isinstance(
-                function_response, dict
-            ), "Function response must be a dictionary"
+                part = content.parts[0]
 
-            if args.verbose:
-                print(f"-> {function_response}")
+                assert isinstance(
+                    part.function_response, types.FunctionResponse
+                ), "Content part must have a function response"
 
-    else:
-        print(response.text)
+                function_response = part.function_response.response
+
+                assert isinstance(
+                    function_response, dict
+                ), "Function response must be a dictionary"
+
+                if args.verbose:
+                    print(f"-> {function_response}")
+
+                contents.append(content)
+        else:
+            print(f"Final response:\n{response.text}")
 
     if args.verbose:
         metadata = response.usage_metadata
